@@ -9,6 +9,7 @@ erl_crash.dump
 *.tar
 .DS_Store
 .iex.exs
+.elixir_ls
 
 # Generated erlang source
 /src/*.erl

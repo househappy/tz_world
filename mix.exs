@@ -16,7 +16,7 @@ defmodule TzWorld.Mixfile do
       description: description(),
       package: package(),
       dialyzer: [
-        plt_add_apps: ~w(mix inets jason)a
+        plt_add_apps: ~w(mix jason)a
       ]
     ]
   end
@@ -34,6 +34,9 @@ defmodule TzWorld.Mixfile do
     [
       {:geo, "~> 1.0 or ~> 2.0 or ~> 3.0"},
       {:jason, "~> 1.0", optional: true},
+      {:tesla, "~> 1.3"},
+      {:mint, "~> 1.0"},
+      {:castore, "~> 0.1"},
       {:ex_doc, "~> 0.19", only: :dev, runtime: false},
       {:dialyxir, "~> 1.0.0-rc", only: :dev, runtime: false, optional: true}
     ]

@@ -8,8 +8,15 @@ defmodule TzWorld.Downloader do
   alias TzWorld.GeoData
   require Logger
 
-  @release_url "https://api.github.com/repos/evansiroky/timezone-boundary-builder/releases"
+  @release_url "https://api.github.com/repos/evansiroky/timezone-boundary-builder"
   @timezones_geojson "timezones.geojson.zip"
+
+  use Tesla
+  adapter Tesla.Adapter.Mint
+
+  plug Tesla.Middleware.BaseUrl, @release_url
+  plug Tesla.Middleware.Headers, [{"user-agent", "tesla/tz_world"}]
+  plug Tesla.Middleware.DecodeJson
 
   @doc """
   Return the `{release_number, download_url}` of
@@ -77,49 +84,30 @@ defmodule TzWorld.Downloader do
     |> Enum.find(fn asset -> Map.get(asset, "name") == requested_asset end)
   end
 
-  defp get_releases do
-    with {:ok, json} <- get_url(@release_url),
-         {:ok, releases} <- Jason.decode(json) do
-      {:ok, releases}
-    end
-  end
-
-  defp get_url(url) when is_binary(url) do
-    url
-    |> to_charlist
-    |> get_url
-  end
+  defp get_releases, do: get_url("releases")
 
   defp get_url(url) do
     require Logger
 
-    case :httpc.request(:get, {url, headers()}, [], []) do
-      {:ok, {{_version, 200, 'OK'}, _headers, body}} ->
-        {:ok, :erlang.list_to_binary(body)}
+    case get(url) do
+      {:ok, %Tesla.Env{status: 200, body: body}} ->
+        {:ok, body}
 
-      {_, {{_version, code, message}, _headers, body}} ->
+      {:ok, %Tesla.Env{status: code, body: body}} ->
         Logger.bare_log(
           :error,
-          "Failed to download from #{inspect(url)}. HTTP Error: (#{code}) #{inspect(message)}. #{
-            inspect(body)
-          }"
+          "Failed to download from #{inspect(url)}. HTTP Error: (#{code}). #{inspect(body)}"
         )
 
         {:error, code}
 
-      {:error, {:failed_connect, [{_, {host, _port}}, {_, _, sys_message}]}} ->
+      {:error, reason} ->
         Logger.bare_log(
           :error,
-          "Failed to connect to #{inspect(host)}. Reason: #{inspect(sys_message)}"
+          "Failed to connect to #{url}. Reason: #{inspect(reason)}"
         )
 
-        {:error, sys_message}
+        {:error, reason}
     end
-  end
-
-  defp headers do
-    [
-      {'User-Agent', 'httpc/22.0'}
-    ]
   end
 end
