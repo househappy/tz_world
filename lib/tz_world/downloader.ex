@@ -90,6 +90,9 @@ defmodule TzWorld.Downloader do
     require Logger
 
     case get(url) do
+      {:ok, %Tesla.Env{status: 302} = env} ->
+        env |> Tesla.get_header("location") |> get_url()
+
       {:ok, %Tesla.Env{status: 200, body: body}} ->
         {:ok, body}
 
