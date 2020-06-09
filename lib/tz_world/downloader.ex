@@ -4,6 +4,9 @@ defmodule TzWorld.Downloader do
   timezones geo JSON data
 
   """
+  use Tesla, only: [:get]
+
+  plug(Tesla.Middleware.Headers, [{"User-Agent", "httpc/22.0"}])
 
   alias TzWorld.GeoData
   require Logger
@@ -54,7 +57,6 @@ defmodule TzWorld.Downloader do
       {:error, :enoent} ->
         {latest_release, asset_url} = latest_release()
         get_and_load_latest_release(latest_release, asset_url)
-
     end
   end
 
@@ -84,127 +86,26 @@ defmodule TzWorld.Downloader do
     end
   end
 
-  defp get_url(url) when is_binary(url) do
-    url
-    |> to_charlist
-    |> get_url
-  end
-
   defp get_url(url) do
     require Logger
 
-    case  :httpc.request(:get, {url, headers()}, https_opts(), []) do
-      {:ok, {{_version, 200, 'OK'}, _headers, body}} ->
-        {:ok, :erlang.list_to_binary(body)}
+    case get(url) do
+      {:ok, %Tesla.Env{status: 200, body: body}} ->
+        {:ok, body}
 
-      {_, {{_version, code, message}, _headers, body}} ->
+      {:ok, %Tesla.Env{status: status, body: body}} ->
         Logger.bare_log(
           :error,
-          "Failed to download from #{inspect(url)}. HTTP Error: (#{code}) #{inspect(message)}. #{
-            inspect(body)
-          }"
+          "Failed to download from #{inspect(url)}. HTTP Error: #{status}. #{inspect(body)}"
         )
 
-        {:error, code}
+        {:error, status}
 
-      {:error, {:failed_connect, [{_, {host, _port}}, {_, _, sys_message}]}} ->
+      error ->
         Logger.bare_log(
           :error,
-          "Failed to connect to #{inspect(host)}. Reason: #{inspect(sys_message)}"
+          "Failed to connect to #{inspect(url)}. Reason: #{inspect(error)}"
         )
-
-        {:error, sys_message}
     end
   end
-
-  defp headers do
-    [
-      {'User-Agent', 'httpc/22.0'}
-    ]
-  end
-
-  @certificate_locations [
-      # Configured cacertfile
-      Application.get_env(TzWorld.app_name(), :cacertfile),
-
-      # Populated if hex package CAStore is configured
-      if(Code.ensure_loaded?(CAStore), do: CAStore.file_path()),
-
-      # Populated if hex package certfi is configured
-      if(Code.ensure_loaded?(:certifi), do: :certifi.cacertfile() |> List.to_string),
-
-      # Debian/Ubuntu/Gentoo etc.
-      "/etc/ssl/certs/ca-certificates.crt",
-
-      # Fedora/RHEL 6
-      "/etc/pki/tls/certs/ca-bundle.crt",
-
-      # OpenSUSE
-      "/etc/ssl/ca-bundle.pem",
-
-      # OpenELEC
-      "/etc/pki/tls/cacert.pem",
-
-      # CentOS/RHEL 7
-      "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
-
-      # Open SSL on MacOS
-      "/usr/local/etc/openssl/cert.pem",
-
-      # MacOS & Alpine Linux
-      "/etc/ssl/cert.pem"
-  ]
-  |> Enum.reject(&is_nil/1)
-
-  def certificate_store do
-    @certificate_locations
-    |> Enum.find(&File.exists?/1)
-    |> raise_if_no_cacertfile
-    |> :erlang.binary_to_list
-  end
-
-  defp raise_if_no_cacertfile(nil) do
-    raise RuntimeError, """
-      No certificate trust store was found.
-      Tried looking for: #{inspect @certificate_locations}
-
-      A certificate trust store is required in
-      order to download locales for your configuration.
-
-      Since ex_cldr could not detect a system
-      installed certificate trust store one of the
-      following actions may be taken:
-
-      1. Install the hex package `castore`. It will
-         be automatically detected after recompilation.
-
-      2. Install the hex package `certifi`. It will
-         be automatically detected after recomilation.
-
-      3. Specify the location of a certificate trust store
-         by configuring it in `config.exs`:
-
-         config :ex_cldr,
-           cacertfile: "/path/to/cacertfile",
-           ...
-
-      """
-  end
-
-  defp raise_if_no_cacertfile(file) do
-    file
-  end
-
-  defp https_opts do
-    [ssl:
-      [
-        verify: :verify_peer,
-        cacertfile: certificate_store(),
-        customize_hostname_check: [
-          match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
-        ]
-      ]
-    ]
-  end
-
 end

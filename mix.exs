@@ -34,11 +34,11 @@ defmodule TzWorld.Mixfile do
     [
       {:geo, "~> 1.0 or ~> 2.0 or ~> 3.3"},
       {:jason, "~> 1.0"},
-      {:castore, "~> 0.1", optional: true},
-      {:certifi, "~> 2.5", optional: true},
       {:ex_doc, "~> 0.19", only: :dev, runtime: false},
       {:dialyxir, "~> 1.0", only: :dev, runtime: false, optional: true},
-      {:benchee, "~> 1.0", only: :dev, runtime: false}
+      {:benchee, "~> 1.0", only: :dev, runtime: false},
+      {:tesla, "~> 1.3.0"},
+      {:hackney, "~> 1.15.2"}
     ]
   end
 
