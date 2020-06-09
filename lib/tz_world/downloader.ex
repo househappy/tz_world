@@ -93,7 +93,7 @@ defmodule TzWorld.Downloader do
       {:ok, %Tesla.Env{status: status} = env} when status in [301, 302] ->
         env
         |> Tesla.get_header("location")
-        |> get()
+        |> get_url()
 
       {:ok, %Tesla.Env{status: 200, body: body}} ->
         {:ok, body}
@@ -111,6 +111,8 @@ defmodule TzWorld.Downloader do
           :error,
           "Failed to connect to #{inspect(url)}. Reason: #{inspect(error)}"
         )
+
+        {:error, 500}
     end
   end
 end
