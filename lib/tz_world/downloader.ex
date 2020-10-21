@@ -6,7 +6,11 @@ defmodule TzWorld.Downloader do
   """
   use Tesla, only: [:get]
 
-  plug(Tesla.Middleware.Headers, [{"User-Agent", "httpc/22.0"}])
+  # explicitly specify adapter so it's not overriden by
+  # Tesla.Mock when MIX_ENV=test
+  adapter Tesla.Adapter.Hackney
+
+  plug Tesla.Middleware.Headers, [{"User-Agent", "httpc/22.0"}]
 
   alias TzWorld.GeoData
   require Logger
